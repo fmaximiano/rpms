@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Seleção de Itens</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='/styles.css') }}">
+</head>
+<body>
+    
+    <!-- Campo de busca (mantido acima das colunas) -->
+    <div class="search-container">
+        <input type="text" id="searchInput" placeholder="Buscar itens..." />
+    </div>
+
+    <!-- Container principal que divide os blocos em colunas -->
+    <div class="container">
+        <!-- Bloco da tabela de itens completos -->
+        <div class="table-container">
+            <table id="itemsTable">
+                <thead>
+                    <tr>
+                        <th>Selecionar</th>
+                        <th>Item</th>
+                        <th>Descrição CATMAS</th>
+                        <th>Valor Unitário Mensal</th>
+                        <th>Quantidade Mensal</th>
+                        <th>Quantidade Total</th>
+                        <th>Valor Unitário Total</th>
+                        <th>Valor Total</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody"></tbody>
+            </table>
+        </div>
+        
+        <!-- Bloco da lista de itens selecionados -->
+        <div class="selected-container">
+            <h3>Itens Selecionados</h3>
+            <ul id="selectedList"></ul>
+        </div>
+
+        
+
+    </div>
+
+    <script>
+        let selectedItems = new Map();
+
+        async function loadItems(search = '') {
+            try {
+                const response = await fetch(`/api/items?search=${encodeURIComponent(search)}`);
+                const items = await response.json();
+                if (items.error) throw new Error(items.error);
+                renderTable(items);
+            } catch (error) {
+                console.error('Erro ao carregar itens:', error);
+            }
+        }
+
+        function renderTable(items) {
+        const tbody = document.getElementById('tableBody');
+        tbody.innerHTML = '';
+
+        items.forEach(item => {
+            const tr = document.createElement('tr');
+
+            // Define a quantidade mínima vinda do banco de dados
+            const qtdeMinima = item.qtde_minima || 1;
+
+            // Se o item já foi selecionado antes, mantém a quantidade escolhida
+            const quantidadeMensal = selectedItems.has(item.item) 
+                ? selectedItems.get(item.item).quantidade_mensal 
+                : qtdeMinima;
+
+            const valorUnMensal = parseFloat(item.valor_un_mensal);
+            const quantidadeTotal = quantidadeMensal * 36;
+            const valorUnTotal = valorUnMensal * 36;
+            const valorTotal = quantidadeMensal * valorUnTotal;
+
+            tr.innerHTML = `
+                <td><input type="checkbox" class="item-checkbox" data-id="${item.item}" data-desc="${item.desc_catmas}" data-valor="${valorUnMensal}" data-min="${qtdeMinima}"></td>
+                <td>${item.item}</td>
+                <td>${item.desc_catmas}</td>
+                <td>R$ ${valorUnMensal.toFixed(2)}</td>
+                <td>
+                    <input type="number" 
+                        class="quantidade-input" 
+                        data-id="${item.item}" 
+                        value="${quantidadeMensal}" 
+                        min="${qtdeMinima}" 
+                        step="1">
+                </td>
+                <td class="quantidade-total" data-id="${item.item}">${quantidadeTotal}</td>
+                <td class="valor-un-total" data-id="${item.item}">R$ ${valorUnTotal.toFixed(2)}</td>
+                <td class="valor-total" data-id="${item.item}">R$ ${valorTotal.toFixed(2)}</td>
+            `;
+
+            tbody.appendChild(tr);
+        });
+
+        // Chama os listeners originais para manter a seleção funcional
+        addEventListeners();
+        }
+
+
+        function addEventListeners() {
+        document.querySelectorAll('.item-checkbox').forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                const id = this.dataset.id;
+                const desc = this.dataset.desc;
+                const valor = parseFloat(this.dataset.valor);
+                const qtdeMinima = parseInt(this.dataset.min) || 1; // Obtém a qtde mínima
+                const quantidadeMensal = parseInt(document.querySelector(`.quantidade-input[data-id="${id}"]`).value) || qtdeMinima;
+
+                if (this.checked) {
+                    selectedItems.set(id, { desc, valor, quantidade_mensal: quantidadeMensal });
+                } else {
+                    selectedItems.delete(id);
+                }
+                updateSelectedItems();
+            });
+
+            if (selectedItems.has(checkbox.dataset.id)) {
+                checkbox.checked = true;
+            }
+        });
+
+        document.querySelectorAll('.quantidade-input').forEach(input => {
+            input.addEventListener('input', function() {
+                const id = this.dataset.id;
+                const minValue = parseInt(this.min) || 1;
+                let quantidadeMensal = parseInt(this.value);
+
+                if (isNaN(quantidadeMensal) || quantidadeMensal < minValue) {
+                    this.value = minValue;  // Corrige para qtde_minima se for inválido
+                    quantidadeMensal = minValue;
+                }
+
+                const valorUnMensal = parseFloat(document.querySelector(`.item-checkbox[data-id="${id}"]`).dataset.valor);
+                const quantidadeTotal = quantidadeMensal * 36;
+                const valorUnTotal = valorUnMensal * 36;
+                const valorTotal = quantidadeMensal * valorUnTotal;
+
+                document.querySelector(`.quantidade-total[data-id="${id}"]`).textContent = quantidadeTotal;
+                document.querySelector(`.valor-un-total[data-id="${id}"]`).textContent = `R$ ${valorUnTotal.toFixed(2)}`;
+                document.querySelector(`.valor-total[data-id="${id}"]`).textContent = `R$ ${valorTotal.toFixed(2)}`;
+
+                if (selectedItems.has(id)) {
+                    selectedItems.get(id).quantidade_mensal = quantidadeMensal;
+                    updateSelectedItems();
+                }
+            });
+
+            // Impede que o usuário saia do campo com um valor inválido
+            input.addEventListener('blur', function() {
+                const minValue = parseInt(this.min) || 1;
+                let quantidadeMensal = parseInt(this.value);
+
+                if (isNaN(quantidadeMensal) || quantidadeMensal < minValue) {
+                    this.value = minValue;  // Define qtde_minima se o usuário sair sem preencher corretamente
+                }
+            });
+        });
+        }
+
+
+        function updateSelectedItems() {
+            const selectedList = document.getElementById('selectedList');
+            selectedList.innerHTML = '';
+
+            selectedItems.forEach((data, id) => {
+                const quantidadeTotal = data.quantidade_mensal * 36;
+                const valorUnTotal = data.valor * 36;
+                const valorTotal = data.quantidade_mensal * valorUnTotal;
+
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    <strong>Item:</strong> ${id} - ${data.desc} <br>
+                    <strong>Qtde Mensal:</strong> ${data.quantidade_mensal} <br>
+                    <strong>Qtde Total:</strong> ${quantidadeTotal} <br>
+                    <strong>Valor Unitário Mensal:</strong> R$ ${data.valor.toFixed(2)} <br>
+                    <strong>Valor Unitário Total:</strong> R$ ${valorUnTotal.toFixed(2)} <br>
+                    <strong>Valor Total:</strong> R$ ${valorTotal.toFixed(2)}<br><br>
+                `;
+                selectedList.appendChild(li);
+            });
+        }
+
+        document.getElementById('searchInput').addEventListener('input', debounce(function() {
+            loadItems(this.value);
+        }, 300));
+
+        function debounce(func, wait) {
+            let timeout;
+            return function(...args) {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => func.apply(this, args), wait);
+            };
+        }
+
+        loadItems();
+    </script>
+</body>
+</html>

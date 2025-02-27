@@ -1,0 +1,47 @@
+/* Container principal que divide a tela */
+.container {
+    display: flex;
+    flex-direction: row; /* Mantém os blocos lado a lado */
+    justify-content: space-between; /* Garante espaçamento entre as colunas */
+    align-items: flex-start; /* Alinha ao topo */
+    gap: 20px; /* Espaço entre os blocos */
+    padding: 20px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* Bloco da lista de itens selecionados */
+.selected-container {
+    flex: 1; /* Ocupa uma parte do espaço disponível */
+    min-width: 300px; /* Evita que fique muito pequeno */
+    max-width: 40%; /* Garante que não fique muito grande */
+    max-height: 80vh; /* Define uma altura máxima */
+    overflow-y: auto; /* Permite rolagem se necessário */
+    border: 1px solid #ccc;
+    padding: 10px;
+    background-color: #f9f9f9;
+}
+
+/* Bloco da tabela */
+.table-container {
+    flex: 2; /* Ocupa mais espaço que a lista de selecionados */
+    min-width: 600px; /* Evita que a tabela fique comprimida */
+    max-width: 60%;
+    overflow-x: auto;
+}
+
+/* Ajuste na tabela */
+#itemsTable {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+#itemsTable th, #itemsTable td {
+    padding: 8px;
+    border: 1px solid #ccc;
+    text-align: left;
+}
+
+#itemsTable th {
+    background-color: #f1f1f1;
+}

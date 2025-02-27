@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Formulário de Quantidade</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
+        th { background-color: #f4f4f4; }
+        input { width: 80px; text-align: center; }
+        button { margin-top: 10px; padding: 8px 15px; }
+    </style>
+</head>
+<body>
+    <h2>Formulário de Quantidade</h2>
+    <form id="formulario">
+        <table>
+            <tr>
+                <th>ITEM</th>
+                <th>DESCRIÇÃO CATMAS</th>
+                <th>COD. CATMAS</th>
+                <th>CATEGORIA</th>
+                <th>DESCRIÇÃO MICROSOFT</th>
+                <th>SKU</th>
+                <th>PERÍODO</th>
+                <th>UNIDADE</th>
+                <th>QUANTIDADE MENSAL (A)</th>
+                <th>QUANTIDADE TOTAL (B = A × 36)</th>
+                <th>VALOR UNITÁRIO MENSAL (C)</th>
+                <th>VALOR UNITÁRIO TOTAL (D = C × 36)</th>
+                <th>VALOR TOTAL (E = A × D)</th>
+            </tr>
+            {% for produto in produtos %}
+            <tr>
+                <td>{{ produto.item }}</td>
+                <td>{{ produto.desc_catmas }}</td>
+                <td>{{ produto.cod_catmas }}</td>
+                <td>{{ produto.categoria }}</td>
+                <td>{{ produto.desc_ms }}</td>
+                <td>{{ produto.sku }}</td>
+                <td>{{ produto.periodo }}</td>
+                <td>{{ produto.unidade }}</td>
+                <td>
+                    <input type="number" name="qtde_mensal" id="qtde_{{ produto.item }}" 
+                           value="{{ produto.qtde_mensal or 1 }}" min="1">
+                </td>
+                <td id="quantidade_total_{{ produto.item }}">0</td>
+                <td id="valor_unitario_{{ produto.item }}">
+                    R$ {{ "{:,.2f}".format(produto.valor_un_mensal | float).replace(",", "X").replace(".", ",").replace("X", ".") }}
+                </td>
+                <td id="valor_un_total_{{ produto.item }}">0</td>
+                <td id="valor_total_{{ produto.item }}">0</td>
+            </tr>
+            {% endfor %}
+        </table>
+        <button type="submit" id="salvarBtn">Salvar</button>
+    </form>
+
+    <script>
+        function formatarMoeda(valor) {
+            return new Intl.NumberFormat('pt-BR', {
+                style: 'currency',
+                currency: 'BRL'
+            }).format(valor);
+        }
+
+        function calcularValores(item) {
+            let qtdeInput = document.getElementById(`qtde_${item}`);
+            let valorUnitarioElement = document.getElementById(`valor_unitario_${item}`);
+            
+            if (!qtdeInput || !valorUnitarioElement) {
+                console.error(`Erro: Elemento não encontrado para item ${item}`);
+                return;
+            }
+
+            let qtdeMensal = parseInt(qtdeInput.value);
+            let valorUnitario = parseFloat(valorUnitarioElement.innerText.trim().replace("R$", "").replace(".", "").replace(",", "."));
+
+            if (isNaN(qtdeMensal) || isNaN(valorUnitario)) {
+                console.error(`Erro: Valores inválidos para item ${item}`);
+                return;
+            }
+
+            let quantidadeTotal = qtdeMensal * 36;
+            let valorUnitarioTotal = valorUnitario * 36;
+            let valorFinal = qtdeMensal * valorUnitarioTotal;
+
+            document.getElementById(`quantidade_total_${item}`).innerText = quantidadeTotal;
+            document.getElementById(`valor_un_total_${item}`).innerText = formatarMoeda(valorUnitarioTotal);
+            document.getElementById(`valor_total_${item}`).innerText = formatarMoeda(valorFinal);
+        }
+
+        document.addEventListener("DOMContentLoaded", function() {
+            let inputs = document.querySelectorAll("input[name='qtde_mensal']");
+            inputs.forEach(input => {
+                let itemId = input.id.split("_")[1];
+                input.addEventListener("input", () => calcularValores(itemId));
+                calcularValores(itemId);
+            });
+        });
+
+        document.getElementById("formulario").addEventListener("submit", async function(event) {
+            event.preventDefault();
+            let botao = document.getElementById("salvarBtn");
+            botao.disabled = true;
+            botao.innerText = "Salvando...";
+
+            let formData = new FormData();
+            let inputs = document.querySelectorAll("input[name='qtde_mensal']");
+            
+            for (let input of inputs) {
+                let itemId = input.id.split("_")[1];
+                let qtdeMensal = input.value;
+
+                formData.append("item", itemId);
+                formData.append("qtde_mensal", qtdeMensal);
+            }
+
+            try {
+                let response = await fetch("/salvar/", {
+                    method: "POST",
+                    body: formData
+                });
+
+                if (response.ok) {
+                    alert("Dados salvos com sucesso!");
+                } else {
+                    alert("Erro ao salvar os dados.");
+                }
+            } catch (error) {
+                console.error("Erro na requisição:", error);
+                alert("Erro na conexão com o servidor.");
+            } finally {
+                botao.disabled = false;
+                botao.innerText = "Salvar";
+            }
+        });
+    </script>
+</body>
+</html>

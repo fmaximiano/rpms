@@ -1,0 +1,10 @@
+<ul style="list-style: none; padding: 0; background-color: #f9f9f9; border: 1px solid #ddd; padding: 10px;">
+    {% for item in selected_items %}
+        <li style="display: flex; justify-content: space-between; align-items: center; padding: 5px; border-bottom: 1px solid #ccc;">
+            <span>{{ item }}</span>
+            <button style="background: red; color: white; border: none; cursor: pointer; padding: 5px;"
+                    hx-get="/selected?selected={{ encoded_selected }}&remove_item={{ item }}"
+                    hx-target="#selected-items">❌</button>
+        </li>
+    {% endfor %}
+</ul>
