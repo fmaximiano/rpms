@@ -28,11 +28,14 @@ async def index(request: Request):
 
 
 @app.get("/api/items")
-async def get_items(search: str = ""):
+async def get_items(search: str = "", lote: int = 1):
     try:
-        query = supabase.table('licencas').select("item, desc_catmas, valor_un_mensal, qtde_minima")  # Adicionei qtde_minima
+        query = supabase.table('licencas').select("item, desc_catmas, valor_un_mensal, qtde_minima, lote")  
+        
         if search:
             query = query.ilike('desc_catmas', f'%{search}%')
+        
+        query = query.eq("lote", lote)  # Filtra pelo lote informado
         
         response = query.execute()
         return response.data

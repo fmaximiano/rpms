@@ -11,11 +11,13 @@
 
         <div class="search-container">
             <input type="text" id="searchInput" placeholder="Buscar itens..." />
-            <div class="user-info-container">
-                <input type="text" id="nome" placeholder="Nome" />
-                <input type="email" id="email" placeholder="E-mail" />
-                <input type="text" id="orgao" placeholder="Órgão" />
+            <div class="filter-container">
+                <button class="filter-btn active" data-lote="1">LOTE 1</button>
+                <button class="filter-btn" data-lote="2">LOTE 2</button>
+                <button class="filter-btn" data-lote="3">LOTE 3</button>
+                <button class="filter-btn" data-lote="4">LOTE 4</button>
             </div>
+            
         </div>
 
 
@@ -51,22 +53,34 @@
         </div>
 
         <script>
-            let selectedItems = new Map();
+                let selectedItems = new Map();
+                let currentLote = 1; // Lote padrão
 
-            async function loadItems(search = '') {
+            async function loadItems(search = '', lote = 1) {
                 try {
-                    const response = await fetch(`/api/items?search=${encodeURIComponent(search)}`);
+                    const response = await fetch(`/api/items?search=${encodeURIComponent(search)}&lote=${lote}`);
                     let items = await response.json();
                     if (items.error) throw new Error(items.error);
 
-                    // 🏆 Ordenar os itens pelo campo "item" antes de renderizar
+                    // Ordenar os itens antes de renderizar
                     items.sort((a, b) => a.item - b.item);
-
+                    
                     renderTable(items);
                 } catch (error) {
                     console.error('Erro ao carregar itens:', error);
                 }
             }
+
+            // Adiciona funcionalidade para os botões de filtro
+            document.querySelectorAll(".filter-btn").forEach(button => {
+                button.addEventListener("click", function() {
+                    document.querySelectorAll(".filter-btn").forEach(btn => btn.classList.remove("active"));
+                    this.classList.add("active");
+
+                    currentLote = this.dataset.lote;
+                    loadItems('', currentLote);
+                });
+            });
 
 
 
